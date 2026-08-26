@@ -6,7 +6,7 @@ import datetime
 # 1. スプレッドシートとの連携設定
 # ==========================================
 # さきほど名前を変更した鍵ファイル（secret.json）を使って接続
-gc = gspread.service_account(filename=r"C:\Users\BB1131\Desktop\app\secret.json")
+gc = gspread.service_account(filename="secret.json")
 
 # 自分が作成したスプレッドシートの名前を正確に入力してください！
 # （例："入会数記録アプリ" など）
@@ -62,6 +62,6 @@ elif total >= 10:
 elif total >= 1:
     st.subheader("🐣 レベル1: スライムをアンロック！")
     # ↓ 画像のパスは、ご自身のパソコンのものに合わせてください
-    st.image(r"C:\Users\BB1131\Desktop\app\slime.png", width=300)
+    st.image("slime.png", width=300)
 else:
     st.write("🔒 まだキャラクターはアンロックされていません。最初の記録を始めましょう！")
