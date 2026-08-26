@@ -8,6 +8,7 @@ import json  # ← 新しく追加！
 # ==========================================
 # ファイルではなく、Streamlitの金庫（Secrets）から鍵を取り出して接続
 creds_dict = json.loads(st.secrets["google_creds"])
+creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
 gc = gspread.service_account_from_dict(creds_dict)
 
 # 自分が作成したスプレッドシートの名前を正確に入力してください！
