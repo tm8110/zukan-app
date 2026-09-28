@@ -3,7 +3,6 @@ import gspread
 import datetime
 import json
 import random
-import time
 
 # ==========================================
 # 0. ログイン機能（記憶領域の準備）
@@ -38,7 +37,7 @@ gc = gspread.service_account_from_dict(creds_dict)
 sh = gc.open("入会数記録アプリ") 
 worksheet = sh.sheet1
 zukan_sheet = sh.worksheet("図鑑データ")
-target_sheet = sh.worksheet("目標データ") # ★ 新しい目標シートを読み込む
+target_sheet = sh.worksheet("目標データ")
 
 # ==========================================
 # 今月の合計を計算する専用の仕組み
@@ -65,7 +64,7 @@ if st.button("ログアウト"):
     st.rerun()
 
 # ------------------------------------------
-# ★ 新機能：進捗ゲージの表示（一番上に表示）
+# ★ 進捗ゲージの表示（一番上に表示）
 # ------------------------------------------
 current_ym = datetime.date.today().strftime("%Y/%m")
 latest_total = get_monthly_total()
@@ -74,7 +73,6 @@ latest_total = get_monthly_total()
 target_data = target_sheet.get_all_values()
 target_count = 0
 for row in target_data[1:]:
-    # 年/月と従業員コードが一致する行を探す
     if len(row) >= 3 and row[0] == current_ym and row[1] == st.session_state.emp_code:
         if row[2].isdigit():
             target_count = int(row[2])
@@ -83,7 +81,6 @@ for row in target_data[1:]:
 st.markdown("---")
 if target_count > 0:
     st.subheader(f"🎯 今月の目標達成まで: {latest_total} / {target_count} 件")
-    # ゲージの割合を計算 (100%を超えないように最大1.0にする)
     progress_ratio = min(latest_total / target_count, 1.0)
     st.progress(progress_ratio)
     
@@ -103,7 +100,25 @@ tab_record, tab_zukan = st.tabs(["📝 記録画面", "📚 キャラクター�
 # ------------------------------------------
 with tab_record:
     st.header("📝 今日の入会数を記録")
+
+    # ★リロードされた直後に「記憶しておいたメッセージ」を表示する仕組み
+    if "success_msg" in st.session_state:
+        st.success(st.session_state.success_msg)
+        del st.session_state.success_msg # 1回表示したら消す
+        
+    if "gacha_msg" in st.session_state:
+        st.success(st.session_state.gacha_msg)
+        # 風船のコード(st.balloons())は削除しました
+        del st.session_state.gacha_msg
+        
+    if "gacha_details" in st.session_state:
+        for msg in st.session_state.gacha_details:
+            st.info(msg)
+        del st.session_state.gacha_details
+
+    # 入力フォーム
     daily_count = st.number_input("入会数を入力してください", min_value=0, step=1)
+    st.write(f"（次のガチャまであと **{5 - (latest_total % 5)} 件**！）")
 
     if st.button("記録する"):
         if daily_count > 0:
@@ -116,24 +131,28 @@ with tab_record:
             new_total = latest_total + daily_count
             gacha_times = (new_total // 5) - (latest_total // 5)
             
+            # ★結果を直接画面に書かず、一度「記憶（session_state）」させる
+            st.session_state.success_msg = f"スプレッドシートに {daily_count}件 記録しました！"
+            
             if gacha_times > 0:
-                st.balloons()
-                st.success(f"🎉 目標達成！ガチャを {gacha_times} 回引きました！")
+                st.session_state.gacha_msg = f"🎉 目標達成！ガチャを {gacha_times} 回引きました！"
+                
                 gacha_results = []
+                details = []
                 for _ in range(gacha_times):
                     get_char_id = random.randint(1, 100)
                     gacha_results.append([st.session_state.emp_code, get_char_id, today_str])
-                    st.info(f"✨ キャラクター No.{get_char_id} をゲット！")
+                    details.append(f"✨ キャラクター No.{get_char_id} をゲット！")
+                
                 zukan_sheet.append_rows(gacha_results)
-                time.sleep(3) # ガチャ結果を読むために3秒待つ
+                st.session_state.gacha_details = details
             
-            # 画面を再読み込みして、一番上のゲージを最新にする！
+            # ★一瞬で画面を再読み込みする！
             st.rerun()
             
         else:
             st.warning("1件以上を入力してください。")
 
-    st.write(f"（次のガチャまであと **{5 - (latest_total % 5)} 件**！）")
 
 # ------------------------------------------
 # 【タブ2】図鑑画面の中身
