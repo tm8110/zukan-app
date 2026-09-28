@@ -28,9 +28,8 @@ if not st.session_state.logged_in:
     st.stop()
 
 # ==========================================
-# 1. スプレッドシートとの連携設定（★通信節約版）
+# 1. スプレッドシートとの連携設定（通信節約版）
 # ==========================================
-# @st.cache_resource をつけると、この中の作業は最初の1回だけ実行されます！
 @st.cache_resource
 def init_connection():
     creds_dict = json.loads(st.secrets["google_creds"])
@@ -38,10 +37,8 @@ def init_connection():
     gc = gspread.service_account_from_dict(creds_dict)
     sh = gc.open("入会数記録アプリ") 
     
-    # 3つのシートをまとめて取得して返す
     return sh.sheet1, sh.worksheet("図鑑データ"), sh.worksheet("目標データ")
 
-# 記憶しておいた接続を呼び出して使う
 worksheet, zukan_sheet, target_sheet = init_connection()
 
 # ==========================================
@@ -103,7 +100,7 @@ tab_record, tab_zukan = st.tabs(["📝 記録画面", "📚 キャラクター�
 # 【タブ1】記録画面の中身
 # ------------------------------------------
 with tab_record:
-    st.header("📝 今日の入会数を記録")
+    st.header("📝 今日の記録")
 
     if "success_msg" in st.session_state:
         st.success(st.session_state.success_msg)
@@ -118,26 +115,47 @@ with tab_record:
             st.info(msg)
         del st.session_state.gacha_details
 
+    # ★ 入力フォーム（入会率を追加）
     daily_count = st.number_input("入会数を入力してください", min_value=0, step=1)
-    st.write(f"（次のガチャまであと **{5 - (latest_total % 5)} 件**！）")
+    joining_rate = st.number_input("入会率（％）を入力してください", min_value=0, max_value=100, step=1)
+
+    st.write(f"（入会数：次のガチャまであと **{5 - (latest_total % 5)} 件**！）")
+    st.write("（入会率：**15%以上**の記録でガチャ1回追加！）")
 
     if st.button("記録する"):
-        if daily_count > 0:
+        # 入会数か入会率、どちらかが0以上なら記録できるように変更
+        if daily_count > 0 or joining_rate > 0:
             today_str = datetime.date.today().strftime("%Y/%m/%d")
             
-            worksheet.append_row([today_str, daily_count, st.session_state.emp_code])
+            # スプレッドシートのD列に「入会率」も保存するように追加
+            worksheet.append_row([today_str, daily_count, st.session_state.emp_code, joining_rate])
             
+            # 1. 入会数によるガチャの計算
             new_total = latest_total + daily_count
-            gacha_times = (new_total // 5) - (latest_total // 5)
+            count_gacha = (new_total // 5) - (latest_total // 5)
             
-            st.session_state.success_msg = f"スプレッドシートに {daily_count}件 記録しました！"
+            # 2. ★ 入会率によるガチャの計算（15%以上なら1回、それ以外は0回。累積しない）
+            rate_gacha = 1 if joining_rate >= 15 else 0
             
-            if gacha_times > 0:
-                st.session_state.gacha_msg = f"🎉 目標達成！ガチャを {gacha_times} 回引きました！"
+            # 今回引ける合計ガチャ回数
+            total_gacha = count_gacha + rate_gacha
+            
+            st.session_state.success_msg = f"入会数:{daily_count}件 / 入会率:{joining_rate}％ を記録しました！"
+            
+            if total_gacha > 0:
+                # どんな理由でガチャが引けたかをメッセージにする
+                gacha_reason = []
+                if count_gacha > 0:
+                    gacha_reason.append(f"入会数達成で {count_gacha} 回")
+                if rate_gacha > 0:
+                    gacha_reason.append(f"入会率15%以上で 1 回")
+                reason_text = "、".join(gacha_reason)
+                
+                st.session_state.gacha_msg = f"🎉 {reason_text}！合計ガチャを {total_gacha} 回引きました！"
                 
                 gacha_results = []
                 details = []
-                for _ in range(gacha_times):
+                for _ in range(total_gacha):
                     get_char_id = random.randint(1, 100)
                     gacha_results.append([st.session_state.emp_code, get_char_id, today_str])
                     details.append(f"✨ キャラクター No.{get_char_id} をゲット！")
@@ -148,7 +166,7 @@ with tab_record:
             st.rerun()
             
         else:
-            st.warning("1件以上を入力してください。")
+            st.warning("記録する数値（入会数 または 入会率）を入力してください。")
 
 # ------------------------------------------
 # 【タブ2】図鑑画面の中身
