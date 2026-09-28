@@ -28,16 +28,21 @@ if not st.session_state.logged_in:
     st.stop()
 
 # ==========================================
-# 1. スプレッドシートとの連携設定
+# 1. スプレッドシートとの連携設定（★通信節約版）
 # ==========================================
-creds_dict = json.loads(st.secrets["google_creds"])
-creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-gc = gspread.service_account_from_dict(creds_dict)
+# @st.cache_resource をつけると、この中の作業は最初の1回だけ実行されます！
+@st.cache_resource
+def init_connection():
+    creds_dict = json.loads(st.secrets["google_creds"])
+    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+    gc = gspread.service_account_from_dict(creds_dict)
+    sh = gc.open("入会数記録アプリ") 
+    
+    # 3つのシートをまとめて取得して返す
+    return sh.sheet1, sh.worksheet("図鑑データ"), sh.worksheet("目標データ")
 
-sh = gc.open("入会数記録アプリ") 
-worksheet = sh.sheet1
-zukan_sheet = sh.worksheet("図鑑データ")
-target_sheet = sh.worksheet("目標データ")
+# 記憶しておいた接続を呼び出して使う
+worksheet, zukan_sheet, target_sheet = init_connection()
 
 # ==========================================
 # 今月の合計を計算する専用の仕組み
@@ -64,12 +69,11 @@ if st.button("ログアウト"):
     st.rerun()
 
 # ------------------------------------------
-# ★ 進捗ゲージの表示（一番上に表示）
+# ★ 進捗ゲージの表示
 # ------------------------------------------
 current_ym = datetime.date.today().strftime("%Y/%m")
 latest_total = get_monthly_total()
 
-# 目標シートから自分の今月の目標を取得する
 target_data = target_sheet.get_all_values()
 target_count = 0
 for row in target_data[1:]:
@@ -101,14 +105,12 @@ tab_record, tab_zukan = st.tabs(["📝 記録画面", "📚 キャラクター�
 with tab_record:
     st.header("📝 今日の入会数を記録")
 
-    # ★リロードされた直後に「記憶しておいたメッセージ」を表示する仕組み
     if "success_msg" in st.session_state:
         st.success(st.session_state.success_msg)
-        del st.session_state.success_msg # 1回表示したら消す
+        del st.session_state.success_msg
         
     if "gacha_msg" in st.session_state:
         st.success(st.session_state.gacha_msg)
-        # 風船のコード(st.balloons())は削除しました
         del st.session_state.gacha_msg
         
     if "gacha_details" in st.session_state:
@@ -116,7 +118,6 @@ with tab_record:
             st.info(msg)
         del st.session_state.gacha_details
 
-    # 入力フォーム
     daily_count = st.number_input("入会数を入力してください", min_value=0, step=1)
     st.write(f"（次のガチャまであと **{5 - (latest_total % 5)} 件**！）")
 
@@ -124,14 +125,11 @@ with tab_record:
         if daily_count > 0:
             today_str = datetime.date.today().strftime("%Y/%m/%d")
             
-            # 1. 記録
             worksheet.append_row([today_str, daily_count, st.session_state.emp_code])
             
-            # 2. ガチャの計算
             new_total = latest_total + daily_count
             gacha_times = (new_total // 5) - (latest_total // 5)
             
-            # ★結果を直接画面に書かず、一度「記憶（session_state）」させる
             st.session_state.success_msg = f"スプレッドシートに {daily_count}件 記録しました！"
             
             if gacha_times > 0:
@@ -147,12 +145,10 @@ with tab_record:
                 zukan_sheet.append_rows(gacha_results)
                 st.session_state.gacha_details = details
             
-            # ★一瞬で画面を再読み込みする！
             st.rerun()
             
         else:
             st.warning("1件以上を入力してください。")
-
 
 # ------------------------------------------
 # 【タブ2】図鑑画面の中身
