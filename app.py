@@ -95,16 +95,42 @@ for row in all_data[1:]:
 st.write(f"あなたの今月（{current_ym}）の合計入会数: **{total} 件**")
 
 # ==========================================
-# 3. キャラクターアンロックの仕組み
+# 3. キャラクター図鑑（コレクション画面）
 # ==========================================
-if total >= 20:
-    st.subheader("🎉 レベル3: ドラゴンをアンロック！")
-    st.info("ドラゴンの画像")
-elif total >= 10:
-    st.subheader("✨ レベル2: ナイトをアンロック！")
-    st.info("ナイトの画像")
-elif total >= 1:
-    st.subheader("🐣 レベル1: スライムをアンロック！")
-    st.image("slime.png", width=300)
-else:
-    st.write("🔒 まだキャラクターはアンロックされていません。最初の記録を始めましょう！")
+st.markdown("---")
+st.subheader("📚 今月のキャラクター図鑑")
+
+# 画面を横に3つに分割する（枠を作る）
+col1, col2, col3 = st.columns(3)
+
+# 🐣 レベル1（1件で解放）
+with col1:
+    st.write("**🐣 Lv.1**")
+    if total >= 1:
+        st.image("slime.png", use_column_width=True) # 枠の幅に合わせて画像を表示
+        st.success("スライム")
+    else:
+        # まだ解放されていない場合
+        st.info(f"🔒 1件で解放\n\n(あと {1 - total}件)")
+
+# ✨ レベル2（10件で解放）
+with col2:
+    st.write("**✨ Lv.2**")
+    if total >= 10:
+        # ※ここにナイトの画像を追加したら、上のスライムと同じようにst.image()に書き換えてください
+        st.info("ここにナイトの画像") 
+        st.success("ナイト")
+    else:
+        # まだ解放されていない場合
+        st.error(f"🔒 10件で解放\n\n(あと {10 - total}件)")
+
+# 🎉 レベル3（20件で解放）
+with col3:
+    st.write("**🎉 Lv.3**")
+    if total >= 20:
+        # ※ここにドラゴンの画像を追加したら、st.image()に書き換えてください
+        st.info("ここにドラゴンの画像")
+        st.success("ドラゴン")
+    else:
+        # まだ解放されていない場合
+        st.error(f"🔒 20件で解放\n\n(あと {20 - total}件)")
