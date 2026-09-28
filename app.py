@@ -107,7 +107,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.write("**🐣 Lv.1**")
     if total >= 1:
-        st.image("slime.png", use_column_width=True) # 枠の幅に合わせて画像を表示
+        st.image("slime.png", use_container_width=True) # 枠の幅に合わせて画像を表示
         st.success("スライム")
     else:
         # まだ解放されていない場合
