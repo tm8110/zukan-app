@@ -3,6 +3,7 @@ import gspread
 import datetime
 import json
 import random
+import pandas as pd  # ★ グラフ描画のために追加！
 
 # ==========================================
 # 0. ログイン機能（記憶領域の準備）
@@ -92,9 +93,9 @@ else:
 st.markdown("---")
 
 # ------------------------------------------
-# タブの作成
+# ★ タブを3つに増やす！
 # ------------------------------------------
-tab_record, tab_zukan = st.tabs(["📝 記録画面", "📚 キャラクター図鑑"])
+tab_record, tab_zukan, tab_graph = st.tabs(["📝 記録画面", "📚 キャラクター図鑑", "📈 実績グラフ"])
 
 # ------------------------------------------
 # 【タブ1】記録画面の中身
@@ -115,7 +116,6 @@ with tab_record:
             st.info(msg)
         del st.session_state.gacha_details
 
-    # ★ 入力フォーム（入会率を追加）
     daily_count = st.number_input("入会数を入力してください", min_value=0, step=1)
     joining_rate = st.number_input("入会率（％）を入力してください", min_value=0, max_value=100, step=1)
 
@@ -123,27 +123,19 @@ with tab_record:
     st.write("（入会率：**15%以上**の記録でガチャ1回追加！）")
 
     if st.button("記録する"):
-        # 入会数か入会率、どちらかが0以上なら記録できるように変更
         if daily_count > 0 or joining_rate > 0:
             today_str = datetime.date.today().strftime("%Y/%m/%d")
             
-            # スプレッドシートのD列に「入会率」も保存するように追加
             worksheet.append_row([today_str, daily_count, st.session_state.emp_code, joining_rate])
             
-            # 1. 入会数によるガチャの計算
             new_total = latest_total + daily_count
             count_gacha = (new_total // 5) - (latest_total // 5)
-            
-            # 2. ★ 入会率によるガチャの計算（15%以上なら1回、それ以外は0回。累積しない）
             rate_gacha = 1 if joining_rate >= 15 else 0
-            
-            # 今回引ける合計ガチャ回数
             total_gacha = count_gacha + rate_gacha
             
             st.session_state.success_msg = f"入会数:{daily_count}件 / 入会率:{joining_rate}％ を記録しました！"
             
             if total_gacha > 0:
-                # どんな理由でガチャが引けたかをメッセージにする
                 gacha_reason = []
                 if count_gacha > 0:
                     gacha_reason.append(f"入会数達成で {count_gacha} 回")
@@ -191,3 +183,41 @@ with tab_zukan:
                 st.success(f"No.{i}\n\nゲット!")
             else:
                 st.error(f"No.{i}\n\n???")
+
+# ------------------------------------------
+# 【タブ3】実績グラフの中身（★新機能）
+# ------------------------------------------
+with tab_graph:
+    st.header("📈 あなたの実績グラフ")
+
+    all_data = worksheet.get_all_values()
+    
+    # グラフ用にデータを日ごとにまとめる
+    graph_data = {}
+    for row in all_data[1:]:
+        if len(row) >= 3 and row[2] == st.session_state.emp_code:
+            date_str = row[0]
+            # 入会数
+            count = int(row[1]) if row[1].isdigit() else 0
+            # 入会率（過去のデータでD列が無い場合のエラー防止）
+            rate = 0
+            if len(row) >= 4 and row[3].isdigit():
+                rate = int(row[3])
+                
+            if date_str in graph_data:
+                graph_data[date_str]["入会数"] += count
+                graph_data[date_str]["入会率"] = rate # 1日に複数回入力した場合は最新を反映
+            else:
+                graph_data[date_str] = {"入会数": count, "入会率": rate}
+
+    if len(graph_data) > 0:
+        # 辞書データをpandasの表（DataFrame）に変換
+        df = pd.DataFrame.from_dict(graph_data, orient='index')
+        
+        st.subheader("📊 入会数の推移")
+        st.line_chart(df["入会数"])
+        
+        st.subheader("📊 入会率(%)の推移")
+        st.line_chart(df["入会率"])
+    else:
+        st.info("まだ記録データがありません。")
