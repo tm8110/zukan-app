@@ -6,6 +6,22 @@ import random
 import pandas as pd
 
 # ==========================================
+# ★ デザインのカスタマイズ（プログレスバーを太くする設定）
+# ==========================================
+st.markdown(
+    """
+    <style>
+    /* プログレスバーの太さを 24px に変更 */
+    .stProgress > div > div > div > div {
+        height: 24px;
+        border-radius: 10px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# ==========================================
 # 0. ログイン機能（記憶領域の準備）
 # ==========================================
 if "logged_in" not in st.session_state:
@@ -29,7 +45,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # ==========================================
-# 1. スプレッドシートとの連携設定（通信節約版）
+# 1. スプレッドシートとの連携設定
 # ==========================================
 @st.cache_resource
 def init_connection():
@@ -67,7 +83,7 @@ if st.button("ログアウト"):
     st.rerun()
 
 # ------------------------------------------
-# ★ 進捗ゲージの表示
+# 進捗ゲージの表示
 # ------------------------------------------
 current_ym = datetime.date.today().strftime("%Y/%m")
 latest_total = get_monthly_total()
@@ -107,20 +123,21 @@ with tab_record:
         st.success(st.session_state.success_msg)
         del st.session_state.success_msg
         
-    if "gacha_msg" in st.session_state:
-        st.success(st.session_state.gacha_msg)
-        del st.session_state.gacha_msg
+    if "unlock_msg" in st.session_state:
+        st.success(st.session_state.unlock_msg)
+        del st.session_state.unlock_msg
         
-    if "gacha_details" in st.session_state:
-        for msg in st.session_state.gacha_details:
+    if "unlock_details" in st.session_state:
+        for msg in st.session_state.unlock_details:
             st.info(msg)
-        del st.session_state.gacha_details
+        del st.session_state.unlock_details
 
     daily_count = st.number_input("入会数を入力してください", min_value=0, step=1)
     joining_rate = st.number_input("入会率（％）を入力してください", min_value=0, max_value=100, step=1)
 
-    st.write(f"（入会数：次のガチャまであと **{5 - (latest_total % 5)} 件**！）")
-    st.write("（入会率：**15%以上**の記録でガチャ1回追加！）")
+    # ★ 表現を「図鑑解放」に修正＆8件に変更
+    st.write(f"（入会数：次の図鑑解放まであと **{8 - (latest_total % 8)} 件**！）")
+    st.write("（入会率：**15%以上**の記録で図鑑を1回解放！）")
 
     if st.button("記録する"):
         if daily_count > 0 or joining_rate > 0:
@@ -128,32 +145,34 @@ with tab_record:
             
             worksheet.append_row([today_str, daily_count, st.session_state.emp_code, joining_rate])
             
+            # ★ 計算式を8件で割るように変更
             new_total = latest_total + daily_count
-            count_gacha = (new_total // 5) - (latest_total // 5)
-            rate_gacha = 1 if joining_rate >= 15 else 0
-            total_gacha = count_gacha + rate_gacha
+            count_unlock = (new_total // 8) - (latest_total // 8)
+            rate_unlock = 1 if joining_rate >= 15 else 0
+            total_unlock = count_unlock + rate_unlock
             
             st.session_state.success_msg = f"入会数:{daily_count}件 / 入会率:{joining_rate}％ を記録しました！"
             
-            if total_gacha > 0:
-                gacha_reason = []
-                if count_gacha > 0:
-                    gacha_reason.append(f"入会数達成で {count_gacha} 回")
-                if rate_gacha > 0:
-                    gacha_reason.append(f"入会率15%以上で 1 回")
-                reason_text = "、".join(gacha_reason)
+            if total_unlock > 0:
+                unlock_reason = []
+                if count_unlock > 0:
+                    unlock_reason.append(f"入会数達成で {count_unlock} 回")
+                if rate_unlock > 0:
+                    unlock_reason.append(f"入会率15%以上で 1 回")
+                reason_text = "、".join(unlock_reason)
                 
-                st.session_state.gacha_msg = f"🎉 {reason_text}！合計ガチャを {total_gacha} 回引きました！"
+                # ★ メッセージをフォーマルに修正
+                st.session_state.unlock_msg = f"🎉 {reason_text}！合計 {total_unlock} 回 図鑑を解放しました！"
                 
-                gacha_results = []
+                unlock_results = []
                 details = []
-                for _ in range(total_gacha):
+                for _ in range(total_unlock):
                     get_char_id = random.randint(1, 100)
-                    gacha_results.append([st.session_state.emp_code, get_char_id, today_str])
-                    details.append(f"✨ キャラクター No.{get_char_id} をゲット！")
+                    unlock_results.append([st.session_state.emp_code, get_char_id, today_str])
+                    details.append(f"✨ キャラクター No.{get_char_id} を解放！")
                 
-                zukan_sheet.append_rows(gacha_results)
-                st.session_state.gacha_details = details
+                zukan_sheet.append_rows(unlock_results)
+                st.session_state.unlock_details = details
             
             st.rerun()
             
@@ -161,7 +180,7 @@ with tab_record:
             st.warning("記録する数値（入会数 または 入会率）を入力してください。")
 
 # ------------------------------------------
-# 【タブ2】図鑑画面の中身（★ここが変わりました！）
+# 【タブ2】図鑑画面の中身
 # ------------------------------------------
 with tab_zukan:
     st.header("📚 あなたのキャラクター図鑑（全100種）")
@@ -181,15 +200,11 @@ with tab_zukan:
         with col:
             st.write(f"**No.{i}**")
             if i in my_characters:
-                # ★ 獲得済みの枠：画像を表示する（エラー対策付き）
                 try:
-                    # zukanフォルダの中にある i.png を表示
                     st.image(f"zukan/{i}.png", use_container_width=True)
                 except Exception:
-                    # もし画像ファイル名が間違っていたり見つからない場合は文字を表示
                     st.success("画像準備中")
             else:
-                # 未獲得の枠
                 st.error("???")
 
 # ------------------------------------------
