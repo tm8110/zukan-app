@@ -119,8 +119,8 @@ with tab_record:
     daily_count = st.number_input("入会数を入力してください", min_value=0, step=1)
     joining_rate = st.number_input("入会率（％）を入力してください", min_value=0, max_value=100, step=1)
 
-    st.write(f"（入会数：次のガチャまであと **{5 - (latest_total % 5)} 件**！）")
-    st.write("（入会率：**15%以上**の記録でガチャ1回追加！）")
+    st.write(f"（入会数：次の実績解除まであと **{5 - (latest_total % 5)} 件**！）")
+    st.write("（入会率：**15%以上**の記録で実績解除1回追加！）")
 
     if st.button("記録する"):
         if daily_count > 0 or joining_rate > 0:
@@ -143,7 +143,7 @@ with tab_record:
                     gacha_reason.append(f"入会率15%以上で 1 回")
                 reason_text = "、".join(gacha_reason)
                 
-                st.session_state.gacha_msg = f"🎉 {reason_text}！合計ガチャを {total_gacha} 回引きました！"
+                st.session_state.gacha_msg = f"🎉 {reason_text}！合計実績解除を {total_gacha} 回！"
                 
                 gacha_results = []
                 details = []
