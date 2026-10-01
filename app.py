@@ -3,7 +3,7 @@ import gspread
 import datetime
 import json
 import random
-import pandas as pd  # ★ グラフ描画のために追加！
+import pandas as pd
 
 # ==========================================
 # 0. ログイン機能（記憶領域の準備）
@@ -93,7 +93,7 @@ else:
 st.markdown("---")
 
 # ------------------------------------------
-# ★ タブを3つに増やす！
+# タブの作成
 # ------------------------------------------
 tab_record, tab_zukan, tab_graph = st.tabs(["📝 記録画面", "📚 キャラクター図鑑", "📈 実績グラフ"])
 
@@ -161,7 +161,7 @@ with tab_record:
             st.warning("記録する数値（入会数 または 入会率）を入力してください。")
 
 # ------------------------------------------
-# 【タブ2】図鑑画面の中身
+# 【タブ2】図鑑画面の中身（★ここが変わりました！）
 # ------------------------------------------
 with tab_zukan:
     st.header("📚 あなたのキャラクター図鑑（全100種）")
@@ -179,39 +179,43 @@ with tab_zukan:
     for i in range(1, 101):
         col = cols[(i - 1) % 5]
         with col:
+            st.write(f"**No.{i}**")
             if i in my_characters:
-                st.success(f"No.{i}\n\nゲット!")
+                # ★ 獲得済みの枠：画像を表示する（エラー対策付き）
+                try:
+                    # zukanフォルダの中にある i.png を表示
+                    st.image(f"zukan/{i}.png", use_container_width=True)
+                except Exception:
+                    # もし画像ファイル名が間違っていたり見つからない場合は文字を表示
+                    st.success("画像準備中")
             else:
-                st.error(f"No.{i}\n\n???")
+                # 未獲得の枠
+                st.error("???")
 
 # ------------------------------------------
-# 【タブ3】実績グラフの中身（★新機能）
+# 【タブ3】実績グラフの中身
 # ------------------------------------------
 with tab_graph:
     st.header("📈 あなたの実績グラフ")
 
     all_data = worksheet.get_all_values()
     
-    # グラフ用にデータを日ごとにまとめる
     graph_data = {}
     for row in all_data[1:]:
         if len(row) >= 3 and row[2] == st.session_state.emp_code:
             date_str = row[0]
-            # 入会数
             count = int(row[1]) if row[1].isdigit() else 0
-            # 入会率（過去のデータでD列が無い場合のエラー防止）
             rate = 0
             if len(row) >= 4 and row[3].isdigit():
                 rate = int(row[3])
                 
             if date_str in graph_data:
                 graph_data[date_str]["入会数"] += count
-                graph_data[date_str]["入会率"] = rate # 1日に複数回入力した場合は最新を反映
+                graph_data[date_str]["入会率"] = rate
             else:
                 graph_data[date_str] = {"入会数": count, "入会率": rate}
 
     if len(graph_data) > 0:
-        # 辞書データをpandasの表（DataFrame）に変換
         df = pd.DataFrame.from_dict(graph_data, orient='index')
         
         st.subheader("📊 入会数の推移")
