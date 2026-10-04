@@ -47,7 +47,8 @@ if not st.session_state.logged_in:
 # ==========================================
 # 1. スプレッドシートとの連携設定
 # ==========================================
-@st.cache_resource
+# ★ (ttl="10m") を追加します。これで10分ごとに自動で接続をリフレッシュします！
+@st.cache_resource(ttl="10m")
 def init_connection():
     creds_dict = json.loads(st.secrets["google_creds"])
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
