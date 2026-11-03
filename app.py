@@ -47,7 +47,7 @@ if not st.session_state.logged_in:
 # ==========================================
 # 1. スプレッドシートとの連携設定
 # ==========================================
-# ★ (ttl="10m") を追加します。これで10分ごとに自動で接続をリフレッシュします！
+# ★ (ttl="10m") で10分ごとに自動で接続をリフレッシュします
 @st.cache_resource(ttl="10m")
 def init_connection():
     creds_dict = json.loads(st.secrets["google_creds"])
@@ -136,7 +136,6 @@ with tab_record:
     daily_count = st.number_input("入会数を入力してください", min_value=0, step=1)
     joining_rate = st.number_input("入会率（％）を入力してください", min_value=0, max_value=100, step=1)
 
-    # ★ 表現を「図鑑解放」に修正＆8件に変更
     st.write(f"（入会数：次の図鑑解放まであと **{8 - (latest_total % 8)} 件**！）")
     st.write("（入会率：**15%以上**の記録で図鑑を1回解放！）")
 
@@ -146,7 +145,6 @@ with tab_record:
             
             worksheet.append_row([today_str, daily_count, st.session_state.emp_code, joining_rate])
             
-            # ★ 計算式を8件で割るように変更
             new_total = latest_total + daily_count
             count_unlock = (new_total // 8) - (latest_total // 8)
             rate_unlock = 1 if joining_rate >= 15 else 0
@@ -162,13 +160,13 @@ with tab_record:
                     unlock_reason.append(f"入会率15%以上で 1 回")
                 reason_text = "、".join(unlock_reason)
                 
-                # ★ メッセージをフォーマルに修正
                 st.session_state.unlock_msg = f"🎉 {reason_text}！合計 {total_unlock} 回 図鑑を解放しました！"
                 
                 unlock_results = []
                 details = []
                 for _ in range(total_unlock):
-                    get_char_id = random.randint(1, 100)
+                    # ★ 解放されるキャラクターを150番までに変更
+                    get_char_id = random.randint(1, 150)
                     unlock_results.append([st.session_state.emp_code, get_char_id, today_str])
                     details.append(f"✨ キャラクター No.{get_char_id} を解放！")
                 
@@ -184,7 +182,8 @@ with tab_record:
 # 【タブ2】図鑑画面の中身
 # ------------------------------------------
 with tab_zukan:
-    st.header("📚 あなたのキャラクター図鑑（全100種）")
+    # ★ 見出しを150種に変更
+    st.header("📚 あなたのキャラクター図鑑（全150種）")
 
     zukan_data = zukan_sheet.get_all_values()
     my_characters = set() 
@@ -193,10 +192,12 @@ with tab_zukan:
             if row[1].isdigit():
                 my_characters.add(int(row[1]))
 
-    st.write(f"現在の収集率: **{len(my_characters)} / 100**")
+    # ★ 収集率の分母を150に変更
+    st.write(f"現在の収集率: **{len(my_characters)} / 150**")
 
     cols = st.columns(5)
-    for i in range(1, 101):
+    # ★ ループの回数を151（150まで回す設定）に変更
+    for i in range(1, 151):
         col = cols[(i - 1) % 5]
         with col:
             st.write(f"**No.{i}**")
