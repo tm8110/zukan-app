@@ -165,8 +165,8 @@ with tab_record:
                 unlock_results = []
                 details = []
                 for _ in range(total_unlock):
-                    # ★ 解放されるキャラクターを150番までに変更
-                    get_char_id = random.randint(1, 150)
+                    # ★ 解放されるキャラクターを117番までに変更
+                    get_char_id = random.randint(1, 117)
                     unlock_results.append([st.session_state.emp_code, get_char_id, today_str])
                     details.append(f"✨ キャラクター No.{get_char_id} を解放！")
                 
