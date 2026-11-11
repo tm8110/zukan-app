@@ -182,8 +182,8 @@ with tab_record:
 # 【タブ2】図鑑画面の中身
 # ------------------------------------------
 with tab_zukan:
-    # ★ 見出しを150種に変更
-    st.header("📚 あなたのキャラクター図鑑（全150種）")
+    # ★ 見出しを117種に変更
+    st.header("📚 あなたのキャラクター図鑑（全117種）")
 
     zukan_data = zukan_sheet.get_all_values()
     my_characters = set() 
@@ -192,12 +192,12 @@ with tab_zukan:
             if row[1].isdigit():
                 my_characters.add(int(row[1]))
 
-    # ★ 収集率の分母を150に変更
-    st.write(f"現在の収集率: **{len(my_characters)} / 150**")
+    # ★ 収集率の分母を117に変更
+    st.write(f"現在の収集率: **{len(my_characters)} / 117**")
 
     cols = st.columns(5)
-    # ★ ループの回数を151（150まで回す設定）に変更
-    for i in range(1, 151):
+    # ★ ループの回数を118（117まで回す設定）に変更
+    for i in range(1, 118):
         col = cols[(i - 1) % 5]
         with col:
             st.write(f"**No.{i}**")
